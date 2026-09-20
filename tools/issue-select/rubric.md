@@ -4,7 +4,7 @@
 
 | Check | Evidence | Pass condition | Weight |
 |---|---|---|---|
-| repo_is_active | repo-facts block: `archived`, `last push to any branch`, `latest release`, and recent default-branch commits | Pass if the repo is not archived and has current maintenance signal in the capture: a last push or default-branch commit within 365 days, or a release within 365 days | required |
+| repo_is_active | repo-facts block: `archived`, `last push to any branch`, `latest release`, and the recent default-branch commits | Pass if the repo is not archived and has current maintenance signal in the capture: a last push or default-branch commit within 365 days, or a release within 365 days | required |
 | no_active_claim | issue sidebar and comments: `assignees`, `linked PRs`, and claim comments such as "I'll take this" or "working on this" | Pass if there is no assignee, no open linked PR, and no evidence of active or repeated claim activity in the thread; stale claim comments alone are not a blocker | required |
 | scope_is_reasonable | issue text, acceptance criteria, and comment history; look for umbrella/tracking language, years-long design debate, or feature requests without a grounded design target | Pass if the issue is a single concrete bug or narrow feature request with a defined target and no repeated abandoned attempts or open-ended tracking discussion | required |
 | policy_allows_ai | contribution policy and any explicit AI policy or contributor docs from repo facts | Pass if the repo either says nothing about AI contributions or explicitly allows AI-assisted work; fail if it expressly bans AI-generated code or docs | required |
