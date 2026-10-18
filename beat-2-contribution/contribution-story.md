@@ -55,10 +55,9 @@ happened; these entries are the toolkit's own timeline.
 All four entries are graded. Keep every heading below, and fill each
 one in the week it belongs to.
 
-**Unit 5: [one line on the tool work]**
+**Unit 5: Built issue-scout and fixed a claim check that ignored linked PRs**
 
-[2-4 sentences: what you built (the scout, your strategy), what broke
-or fell short, what changed because of it.]
+I grew my unit 1 issue-select skill into issue-scout: four `gh search issues` queries traced to my Python-first, small-and-testable fit profile, plus six ranking filters (drop assigned, stale, busy, or design-labeled issues; bugs and fewest comments first; at most two per repo), then one scan that graded the top five. It broke in one place: the scout accepted anthropics/claude-agent-sdk-python #1409 because `no_active_claim` quoted only assignees and comments, but when I checked with `gh` that issue already had an open PR (#1410) from its own author, opened two seconds after the issue. I rewrote that check in rubric.md to require the linked-PR count and to read it from `closedByPullRequestsReferences` and the timeline, and added `-linked:pr` to all four queries so such issues never take a grading slot; I confirmed the query change removes #1409 but have not re-run the rubric fix yet. The other four verdicts held up against the real repos, and the remaining limits (the language flag matches the repo, not the fix, and same-day batches crowd the top five) are logged in scan-notes.md.
 
 **Unit 6: [one line on the tool work]**
 
