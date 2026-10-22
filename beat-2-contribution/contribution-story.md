@@ -1,4 +1,4 @@
-# Contribution: [Issue Title]
+# Contribution: feat(exporters): add Slack and Discord rich card formatters to WebhookExporter
 
 Path: `beat-2-contribution/contribution-story.md`
 
@@ -8,10 +8,9 @@ format criteria grade exactly that. Your course repo link is the whole submissio
 files and no evidence uploads are part of Assignment 5.
 
 **Contribution Number:** [1]
-**Student:** [Student name]
-**GitHub Username:** [your GitHub username, exactly as it appears on your profile - no @, no
-profile URL. Your comments upstream are identified by this name.]
-**Issue:** [GitHub issue link]
+**Student:** Ashir Qureshi
+**GitHub Username:** Aqureshi106
+**Issue:** https://github.com/Zwony/ecotrace/issues/194
 **Pull Request:** [GitHub PR link, once opened]
 
 One repository, built across units 5 to 8, telling the whole story of your real
@@ -79,24 +78,16 @@ drafted, what you did with the draft.]
 
 ## Why I Chose This Issue
 
-[1-2 paragraphs in your own words: how you searched, what your scan
-surfaced, what your scout's verdict said, why this issue fits your
-profile, and what you hope to learn. If your scout's verdict on it
-was reject and you chose it anyway, say so here and say why; choosing
-against your own tool silently is what loses points. Close with an
-honest read of the tool itself: where the scout fell short on a real
-wild search and what you changed or would change, or what convinced
-you it held up. **Record the link to your claim comment in this section too.**
-Not claimed yet? Write `claim pending` and today's date where the link goes,
-and add the link the moment your claim lands.]
+I started from my scout's scan on 2026-10-18, which accepted four issues. When I came back on 2026-10-22 every one of them had been claimed within hours of being filed (a claim comment, an assignee, or an open PR; one of them, #1409, was already taken when the scan graded it), and re-grading three of them with the patched rubric rejected all three on `no_active_claim`. So I picked from the Issue Selection site's Python list instead. I read the full thread of about two dozen candidates from it, looking for claim comments and linked PRs, and graded the survivors with the scout in direct-URL mode. `Zwony/ecotrace` #194, "add Slack and Discord rich card formatters to WebhookExporter", was the one that held up: no comments, no PRs, no assignee, and the repo was pushed that day. The scout's verdict was accept with a difficulty note of **moderate**: the file is named exactly (`ecotrace/exporters/webhook.py`), but building the Slack Block Kit and Discord embed payloads means reading two outside specs. It ranked #194 above `ecotrace` #182 (TDP data entry, straightforward) because #194 has a written acceptance checklist and a named test file.
+
+It fits me because it is Python-only, local to one exporter class, and checkable with tests. The issue's own acceptance criteria are backward compatibility for `format="json"`, a Discord embed, a Slack Block Kit payload, unit tests in `tests/test_exporters.py`, and no new dependencies. I read both copies of its `CONTRIBUTING.MD` and the PR template: they say nothing about AI, so AI-assisted work is not banned there. I hope to learn how to build payloads to an external spec and test them with mocks, how a small repo's CI (Python 3.8 to 3.14) limits what I can write, and how to settle the one open question, what "exceeding limits" means for the Discord colour, with the maintainer before building on a guess. As for the scout: its verdicts held up. Every `no_active_claim` grade I re-checked matched what I found reading the threads myself, and the difficulty note matched my read of the work. It fell short at the search stage. The ranking puts zero-comment issues updated that same day first, which are exactly the kind that got claimed within hours last time, and #194 survived because it was already 25 days old with zero comments. I would change the ranking to prefer that. My claim comment: https://github.com/Zwony/ecotrace/issues/194#issuecomment-6351982794
 
 **Toolkit**
 
-- Tool: issue-scout (your scout: your search strategy, your rubric),
-  and how you used it
-- What it produced: [the scan and its verdict on this issue, described]
-- Difficulties: [where it fell short, or "none met" if none did]
-- What changed: [what you patched or would update, or "nothing"]
+- Tool: issue-scout, with my own `search-strategy.md` and `rubric.md`, run through Claude Code. I used it for a scan on 2026-10-18, to re-grade that scan's accepts on 2026-10-22, and in direct-URL mode to grade the issues I took from the Issue Selection site. In unit 6 I patched the rubric's scope check (below).
+- What it produced: scan 1 (2026-10-18) gave 4 accepts and 1 reject. The 2026-10-22 re-grade of three of those accepts rejected all three on `no_active_claim`, each with the PR number, claim comment, or assignee that did it. A second search's top five gave 4 accepts and 1 reject. For this issue it gave accept with a difficulty note of moderate, and accept with straightforward for the runner-up, `ecotrace` #182. Every read-out is saved in `scan-output.md`.
+- Difficulties: all four scan-1 accepts had been claimed within hours of being filed, so the scan left me nothing I could still take. The scout's own scan mode could not run non-interactively because it was refused permission for `gh` commands; I ran the strategy's four queries and six ranking filters with a script instead and used the scout only to grade. The top five were all zero-comment issues last updated that same day. And the scout searches all of GitHub, while the Issue Selection site holds about 7,900 issues, so most of what a scan returns is not on the site. On one repo it flagged an instruction aimed at AI agents in `CONTRIBUTING.md` (star the repo) and did not act on it.
+- What changed: I replaced `scope_is_reasonable` (a single concrete bug or narrow feature, no repeated abandoned attempts or open-ended discussion) with `scope-feasible`, which fails only when there is no single piece of work in the issue, and added a difficulty note section (straightforward, moderate, ambitious) that never changes the verdict. I logged it in `scan-notes.md` on 2026-10-22. It ran on ten issues and produced difficulty notes; none of them exercised the failing case, so rejecting an umbrella issue is untested, and I have not re-run the unit-1 harness against the patched rubric. I would also change the ranking to prefer zero-comment issues at least a few days old, which is what survived here; I have not made or tested that change.
 
 ---
 
