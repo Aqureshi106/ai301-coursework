@@ -120,31 +120,73 @@ It fits me because it is Python-only, local to one exporter class, and checkable
 
 **Environment Setup**
 
-[What a stranger would need to stand this up: your operating system,
-the relevant versions (language, runtime, package manager, the project
-itself), and how you set the project up. Then the challenges you faced
-and how you solved them, or that none came up.]
+I ran this on Windows 11 (`Windows-11-10.0.26300-SP0`) with Python 3.14.3 in a fresh `.venv`, against ecotrace 1.7.1 installed editable from commit `413685b4c82cbcfcb436ba6276dda99b62b0a29e` (`v1.7.1-6-g413685b`, main on 2026-10-22), with no local changes. `requests` 2.34.2 comes in through ecotrace's own dependencies, and the install is `pip install -e .`. The issue names no environment, and CI tests Python 3.8 to 3.14-dev, so 3.14.3 is one point in that range. No network is used: the script patches `requests.post`, the way the repo's own tests do. For the baseline I also installed pytest 8.3.4, requests-mock 1.12.1 and pytest-cov 5.0.0, which is CI's install.
+
+Challenges: CONTRIBUTING says `pip install -e ".[dev]"`, but `pyproject.toml` has no `dev` extra, so I copied CI's install lines from `.github/workflows/ci.yml` instead. Nothing else came up: `tests/test_exporters.py` gave 9 passed and the full suite 239 passed, 2 skipped, before I changed anything.
 
 **Steps to Reproduce**
 
-1. [Step 1]
-2. [Step 2]
-3. [Observed result]
+1. Clone and pin the commit: `git clone https://github.com/Zwony/ecotrace.git`, then `cd ecotrace && git checkout 413685b`.
+2. Create the environment and install: `python -m venv .venv`, then `.venv\Scripts\python.exe -m pip install -e .`.
+3. Save this as `repro_194.py` (anywhere; it imports the installed package):
+
+```python
+import inspect
+from unittest.mock import patch
+
+from ecotrace.core import EcoTrace
+from ecotrace.exporters.webhook import WebhookExporter
+
+URL = "http://example.com/webhook"
+
+print("signature:", inspect.signature(WebhookExporter.__init__))
+
+# Control: the call the code supports today works, and sends the raw JSON dict.
+with patch("requests.post") as post:
+    post.return_value.status_code = 200
+    eco = EcoTrace(quiet=True, check_updates=False)
+    WebhookExporter(ecotrace_instance=eco, url=URL)
+    eco._accumulate_carbon(carbon_emitted=0.005, func_name="test_function", duration=1.2)
+    eco._exporter_pool.shutdown(wait=True)
+    payload = post.call_args.kwargs["json"]
+
+print("control, no format argument -> POST json:", payload)
+print("  has Discord 'embeds':", "embeds" in payload, "| has Slack 'blocks':", "blocks" in payload)
+
+# The calls the issue proposes, including the backward-compatible default.
+for fmt in ("json", "discord", "slack"):
+    try:
+        WebhookExporter(ecotrace_instance=eco, url=URL, format=fmt)
+        print(f"format={fmt!r}: accepted")
+    except TypeError as e:
+        print(f"format={fmt!r}: TypeError: {e}")
+```
+
+4. Run it: `.venv\Scripts\python.exe repro_194.py`.
+5. Observed result: with no `format` argument the exporter works and POSTs the flat dict with no `embeds` or `blocks` key; with `format` set to `"json"`, `"discord"` or `"slack"`, the constructor raises `TypeError: WebhookExporter.__init__() got an unexpected keyword argument 'format'`. I ran it twice with the same output (only the generated `run_id` differs).
 
 **Reproduction Evidence**
 
-- **Commit showing reproduction:** [link to commit in your fork]
-- **Screenshots/logs:** [if applicable]
-- **My findings:** [what you discovered during reproduction; an
-  honest, evidenced cannot-reproduce that led you to re-pick or ask
-  the maintainer belongs here and costs you nothing]
+- **Commit showing reproduction:** none. I have not forked the repo, and the script is not committed; it is in the steps above.
+- **Screenshots/logs:** output of step 4:
+
+```
+signature: (self, ecotrace_instance: ecotrace.core.EcoTrace, url: str, headers: Dict[str, str] | None = None)
+control, no format argument -> POST json: {'function': 'test_function', 'carbon_gco2': 0.005, 'duration_s': 1.2, 'region': 'GLOBAL', 'run_id': 'f4bf68575d01', 'run_label': ''}
+  has Discord 'embeds': False | has Slack 'blocks': False
+format='json': TypeError: WebhookExporter.__init__() got an unexpected keyword argument 'format'
+format='discord': TypeError: WebhookExporter.__init__() got an unexpected keyword argument 'format'
+format='slack': TypeError: WebhookExporter.__init__() got an unexpected keyword argument 'format'
+```
+
+- **My findings:** reproduced. #194 is a feature request, so what reproduces is the missing behavior. `WebhookExporter.__init__` takes only `ecotrace_instance`, `url` and `headers`, so the exporter can send only the raw JSON dict and rejects the `format` argument the issue proposes, including the `"json"` default it wants to keep. The control run shows the exporter works without `format`, so the failure is specific to the missing argument and not to my setup. I have not changed any code and have not yet decided how the Discord and Slack payloads should be built.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: repro-check, my unit-2 skill with this week's real-repo `scope.md` and my voice guide, run in live mode through Claude Code on `claim-draft.md` and `repro-draft.md` together.
+- What it produced: on the claim alone it first failed the draft because of "within a week" (`claim-is-specific`, and it quoted my own no-dates rule), then accepted the reworded claim. On the full package it accepted with all seven checks passing, including the preferred `control-run`, and found no voice-guide rule broken.
+- Difficulties: the rubric is written around failures with error text and exit codes, and #194 is a feature request, so `artifact-matches-issue` took a judgment: the grader read "the artifact shows the requested behavior missing" as the failure, which was the right reading, but nothing in my rubric says that. `claim-matches-evidence` also let the pytest counts in my claim stand as prose with no artifact behind them, which my unit-2 loosening allows; I know they are true because I ran them, not because the check proved it. The package passed on its first grading, so I cannot say yet what it would catch in a weaker report.
+- What changed: nothing in the rubric. The claim wording changed, from a dated promise to "I'll post what I find here before I open a PR". I would add one line to `artifact-matches-issue` saying that for a feature request the artifact should show the requested behavior absent, and I have not made that change.
 
 ---
 
