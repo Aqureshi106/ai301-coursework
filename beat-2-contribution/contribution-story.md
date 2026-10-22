@@ -58,11 +58,9 @@ one in the week it belongs to.
 
 I grew my unit 1 issue-select skill into issue-scout: four `gh search issues` queries traced to my Python-first, small-and-testable fit profile, plus six ranking filters (drop assigned, stale, busy, or design-labeled issues; bugs and fewest comments first; at most two per repo), then one scan that graded the top five. It broke in one place: the scout accepted anthropics/claude-agent-sdk-python #1409 because `no_active_claim` quoted only assignees and comments, but when I checked with `gh` that issue already had an open PR (#1410) from its own author, opened two seconds after the issue. I rewrote that check in rubric.md to require the linked-PR count and to read it from `closedByPullRequestsReferences` and the timeline, and added `-linked:pr` to all four queries so such issues never take a grading slot; I confirmed the query change removes #1409 but have not re-run the rubric fix yet. The other four verdicts held up against the real repos, and the remaining limits (the language flag matches the repo, not the fix, and same-day batches crowd the top five) are logged in scan-notes.md.
 
-**Unit 6: [one line on the tool work]**
+**Unit 6: Installed the voice guard and a repo memory file, and patched the guard to run on Windows**
 
-[2-4 sentences: the voice-guard, the repo-memory file. What broke or
-fell short, and what changed because of it. "Nothing broke" counts when
-it is true - say how you know.]
+I installed the voice guard, a hook that checks every `gh` comment I post against my voice guide (which now has an Upstream section for claims, questions, and pings), and wrote a 41-line `CLAUDE.local.md` for ecotrace with its conventions, the exporters subsystem, the test commands, and its AI policy, kept out of the PR with `.git/info/exclude`. Three things fell short: on Windows the guard could not start `claude` (`claude.CMD` is not found by a bare `subprocess.run`), so every real check would have stopped, and symlinks needed admin, so the three skills got pointer files instead; my first claim draft promised to report back "within a week" and failed repro-check, which cited my own no-dates rule; and CONTRIBUTING's `pip install -e ".[dev]"` names an extra that does not exist. I patched the installed `check_voice.py` to find `claude` with `shutil.which`, reworded the claim to "I'll post what I find here before I open a PR" (repro-check then accepted it), and put the install commands CI actually uses in the memory file. I know the guard works because it stopped `gh issue comment --help` in the wiring test and logged a pass on the claim comment in `guard-log.md`, and the maintainer answered the claim and assigned me the same day.
 
 **Unit 7: [one line on the tool work]**
 
