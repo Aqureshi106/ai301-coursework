@@ -93,26 +93,26 @@ It fits me because it is Python-only, local to one exporter class, and checkable
 
 **Problem Description**
 
-[In your own words, what is broken or missing?]
+`WebhookExporter` can only send one fixed JSON shape (`function`, `carbon_gco2`, `duration_s`, `region`, `run_id`, `run_label`). The issue (#194) says teams get their alerts in Slack and Discord through incoming webhooks and want EcoTrace to format for those, so they don't have to write their own middleware. Right now the exporter has no way to choose a format at all.
 
 **Expected Behavior**
 
-[What should happen?]
+`WebhookExporter(eco, url=..., format="discord")` sends a Discord embed showing function name, duration and gCO2, coloured green when emissions are under `carbon_limit` (or no limit is set) and red/orange when they are over it, which the maintainer confirmed on the thread. `format="slack"` sends a Slack Block Kit payload. `format="json"`, the default, keeps sending the existing payload. No new third-party dependencies, and tests in `tests/test_exporters.py`.
 
 **Current Behavior**
 
-[What actually happens?]
+Without `format`, the exporter works and POSTs only the flat dict, with no `embeds` or `blocks`. Passing `format="json"`, `"discord"` or `"slack"` raises `TypeError: WebhookExporter.__init__() got an unexpected keyword argument 'format'` (ecotrace 1.7.1 at commit 413685b, Python 3.14.3, Windows 11).
 
 **Affected Components**
 
-[Which parts of the codebase are involved?]
+`ecotrace/exporters/webhook.py` (`WebhookExporter.__init__` and `export`) is where the change goes. It reads `carbon_limit` from the `EcoTrace` instance in `ecotrace/core.py`, which calls the exporter from `_accumulate_carbon`. The tests go in `tests/test_exporters.py`.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: `CLAUDE.local.md`, the repo-memory file I made in Unit 6 for this repo, and Claude Code reading the issue (`gh issue view`) and the exporter code with me.
+- What it produced: notes on the repo's conventions from CONTRIBUTING.MD, the issue's own checklist as the scope, a walk through the subsystem (`webhook.py`, how `core.py` calls exporters, the existing webhook tests), and the build and test commands.
+- Difficulties: CONTRIBUTING.MD says to install with `pip install -e ".[dev]"` and lint with `flake8 ecotrace/`, but `pyproject.toml` has no `dev` extra and CI never runs flake8. On untouched main, flake8 reports 745 violations.
+- What changed: `CLAUDE.local.md` now says not to copy that install line, and my Unit 7 ship manifest runs the test command CI uses and lists flake8 as excluded, with the date and the reason.
 
 ---
 
@@ -194,29 +194,49 @@ format='slack': TypeError: WebhookExporter.__init__() got an unexpected keyword 
 
 **Analysis**
 
-[Your analysis of the root cause: what is causing the issue, traced
-to the files and functions involved.]
+The cause is a missing capability, in two places in `ecotrace/exporters/webhook.py` (read on main at 413685b):
+
+- `WebhookExporter.__init__` (line 24) takes only `ecotrace_instance`, `url` and `headers`, so there is nowhere to say which format to send. I observed this: `format="json"`, `"discord"` and `"slack"` all raise `TypeError: WebhookExporter.__init__() got an unexpected keyword argument 'format'` (my `repro_194.py`, Windows 11, Python 3.14.3).
+- `WebhookExporter.export` (line 44) always builds the same flat dict (`function`, `carbon_gco2`, `duration_s`, `region`, `run_id`, `run_label`) and POSTs it with `requests.post(..., json=payload)`. The control run in my repro shows that payload has no `embeds` key and no `blocks` key. The issue's premise is that Slack and Discord incoming webhooks need their own payload shapes (Block Kit, embeds). I have not posted to either service, so that part comes from the issue, not from a run of mine.
+
+Nothing upstream of the exporter has to change. `EcoTrace._accumulate_carbon` (`ecotrace/core.py`, line 394) already calls `exporter.export(carbon_emitted=..., func_name=..., duration=..., region=..., run_id=..., run_label=...)` on a thread pool, so everything a card needs is already passed in. The colour limit is reachable too: `EcoTrace.__init__` validates `carbon_limit` (a positive number or None, lines 108-113) and keeps it as `self.carbon_limit`, and the exporter already holds the instance as `self.ecotrace`.
+
+One thing to keep straight: core uses `carbon_limit` as a running budget (`_enforce_carbon_budget`, line 468, compares the cumulative `total_carbon`), but an exporter only receives one measurement at a time. The maintainer confirmed on the issue thread (2026-10-22) that the Discord colour should compare the measurement against `carbon_limit`: green when below it or when it is unset, red/orange when above it. So the colour is per measurement. It is not a "budget used up" signal.
 
 **Proposed Solution**
 
-[High-level description of your fix approach, and what you are
-deliberately NOT changing.]
+Add an optional `format` argument to `WebhookExporter` and build the payload in `export()` by format, all inside `webhook.py`, with pure dict formatting and no new dependencies (the issue requires that).
+
+- `format="json"` is the default and sends exactly the dict it sends today. A test pins that.
+- `format="discord"` sends `{"embeds": [...]}` with one embed: the function name as the title, gCO2 and duration as fields, and a colour. The colour is red when `carbon_limit` is a number and the measurement is at or above it, and green otherwise (including when `carbon_limit` is None). I will read `self.ecotrace.carbon_limit` rather than change core to pass it into `export()`, which would touch the contract every exporter shares.
+- `format="slack"` sends Block Kit `blocks` (a section with the function name, and a section with gCO2 and duration as fields) plus a plain `text` fallback.
+- An unknown `format` logs a warning and falls back to "json", the way `EcoTrace.__init__` treats a bad `gpu_index` or `carbon_limit`.
+
+What I am deliberately not changing: `core.py` (dispatch, `carbon_limit` validation, the budget logic, the "reserved for future budget alert" docstring), the cloud and OTel exporters, the default JSON payload and the existing webhook tests, `region` / `run_id` / `run_label` on the cards (the issue names only function name, duration and gCO2), other chat services such as Teams, retries, and docs. `docs/USAGE.md` still says each event sends the JSON payload, which stays true by default; I will ask in the PR whether a format example belongs there, instead of adding it unasked.
+
+What I am least sure of, and how I will find out:
+
+- Whether `>=` is the right edge for red. The maintainer's words cover "below" and "exceed", not "equal". I will use `>=` to match core's budget check, test the equal case, and say so in the PR.
+- The card shapes are only checked as dicts, and I have not sent one to real Slack or Discord. I will check them against Discord's embed docs and Slack's Block Kit docs as I build, and send one of each to a throwaway webhook of my own if I can set one up.
+- `tests/test_v151_validation.py` builds `WebhookExporter` around a bare `MagicMock()`, where `carbon_limit` is a mock and not a number. The default JSON path never reads it, and the Discord path will compare only when it is an int or float. The full suite will show whether I got that right.
+- CI runs Python 3.8 to 3.14-dev, so the new code keeps to `typing.Dict` / `Optional` (no `X | Y`, no `match`).
 
 **Implementation Plan**
 
-1. [Modify file X to do Y]
-2. [Add or change Z]
-3. [Update tests]
+1. In `ecotrace/exporters/webhook.py`, add `format: str = "json"` after `headers` (so existing positional calls still work), document it in the class docstring, validate it (an unknown value logs a warning and falls back to "json"), and store it as `self.format`. In `tests/test_exporters.py`, add the first test: the default payload and `format="json"` both send the same six-key dict as today. It follows `test_webhook_exporter_registration_and_export`: patch `requests.post`, drive a real `EcoTrace` through `eco._accumulate_carbon(...)`, and call `eco._exporter_pool.shutdown(wait=True)` before asserting. Run it before going further; my claim on the issue said this comes first.
+2. In the same file, add a Discord payload builder and branch `export()` on `self.format`, leaving the json branch's dict and its `requests.post` call as they are. Tests in `tests/test_exporters.py`: the payload has one embed with the function name, gCO2 and duration; the colour is green when `carbon_limit` is None and when the measurement is under it, and red when it is over it and when it is equal to it.
+3. In the same file, add the Slack payload builder. Test: `blocks` and `text` are present and carry the function name, gCO2 and duration.
+4. Add a test that an unknown `format` logs a warning and still sends the json payload.
+5. Check the result. Re-run the script from my repro report (`repro_194.py`). Before: the three `format` calls raise TypeError. After: they are accepted, the control (no `format`) prints the same six keys as before, and the POSTed payload has `embeds` only for "discord" and `blocks` only for "slack". Then run `.venv\Scripts\python.exe -m pytest tests/ -q`. On main that was 239 passed, 2 skipped (`tests/test_exporters.py` alone: 9 passed). After the change I expect the same, plus the new tests passing, with no existing test edited.
 
-[Record deviations here as they happen: what changed mid-build and
-why. A recorded deviation is honest work; silent drift is not.]
+Deviations from this plan: none yet.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: plan-check (my Unit 3 skill, with the scope for real repos), run with `claude -p` from my clone on `plan.md` and a draft plan comment, `plan-comment.md`, against issue #194. The comment stays local; I did not post it.
+- What it produced: accept on the first graded run, with all seven checks passing (diagnosis, scope, test plan, executable, claims-match-evidence, comment-fits-thread, risks-named). Each grade quoted its evidence from the live code and thread, for example that `__init__` takes only `ecotrace_instance`, `url` and `headers`, that the maintainer's own words back the per-measurement colour rule, and that the `>=` edge is hedged as unsure rather than asserted.
+- Difficulties: the first run didn't grade anything. In print mode it could not read the skill's own rubric and procedure files and asked me to approve access. I re-ran it with read access to the skill folder and read-only `gh` and `git` commands. My repro report isn't posted on the issue yet, so there was no posted repro comment for plan-check to read; the plan and the comment quote the TypeError and the control payload themselves, and it passed on that.
+- What changed: nothing in the plan or the comment, because the grade was accept, so `plan.md` and this section are still the same text. For next time I know the permissions that print mode needs for this skill, and I want to post the repro report before relying on the grade.
 
 ---
 
