@@ -329,8 +329,10 @@ The plan did not change: the diff against main is `ecotrace/exporters/webhook.py
 **Maintainer Feedback:**
 
 - 2026-10-29: none yet from the maintainer. I opened the PR the same evening. SonarCloud's bot commented that its Quality Gate passed with 0 new issues.
+- 2026-10-30: Zwony approved the PR and merged it 15 seconds later, 13.7 hours after I opened it, which closed #194. His review reads: "Thank you for the thorough work, detailed PR description, and comprehensive test suite. The implementation is clean, backward-compatible, and adheres strictly to the project requirements. Merging now." He asked for no changes. Codecov's bot had commented a minute earlier that every modified line is covered. He did not answer the `>=` question I raised in the description, so the equal case merged as I wrote it.
+- 2026-11-05: nothing was asked of me, so I changed nothing and pushed no commits; the PR merged as opened, from the same four commits. I have not replied on the PR. The PR monitor drafted a thank-you to Zwony and a note that `docs/USAGE.md` still does not document `format`; I checked that against upstream main and it holds, but the draft thanked him for "reading through the full write-up and the 9 tests", which his review does not say, so I would thank him only for the approval and the same-day merge, and I have not sent it.
 
-**Status:** Awaiting review
+**Status:** Merged
 
 **Toolkit**
 
