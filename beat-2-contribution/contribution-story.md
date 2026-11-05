@@ -165,7 +165,7 @@ for fmt in ("json", "discord", "slack"):
 
 **Reproduction Evidence**
 
-- **Commit showing reproduction:** none. I have not forked the repo, and the script is not committed; it is in the steps above.
+- **Commit showing reproduction:** none. I had not forked the repo when I reproduced (I forked it on 2026-10-29, just before opening the PR), and the script was never committed; it is in the steps above.
 - **Screenshots/logs:** output of step 4:
 
 ```
@@ -227,7 +227,7 @@ What I am least sure of, and how I will find out:
 4. Add a test that an unknown `format` logs a warning and still sends the json payload.
 5. Check the result. Re-run the script from my repro report (`repro_194.py`). Before: the three `format` calls raise TypeError. After: they are accepted, the control (no `format`) prints the same six keys as before, and the POSTed payload has `embeds` only for "discord" and `blocks` only for "slack". Then run `.venv\Scripts\python.exe -m pytest tests/ -q`. On main that was 239 passed, 2 skipped (`tests/test_exporters.py` alone: 9 passed). After the change I expect the same, plus the new tests passing, with no existing test edited.
 
-Deviations from this plan: none yet.
+Deviations from this plan: none. The merged diff is `ecotrace/exporters/webhook.py` and `tests/test_exporters.py` and nothing else, and the four commits follow the plan's steps (see Implementation Notes, 2026-10-29).
 
 **Toolkit**
 
@@ -240,7 +240,7 @@ Deviations from this plan: none yet.
 
 ## Testing Strategy
 
-I check the fix three ways, all on Windows 11 with Python 3.14.3, and each one is a command whose output I can compare before and after. The complete output is in `test_evidence.md`, which I keep out of my commits and plan to use for the PR description.
+I check the fix three ways, all on Windows 11 with Python 3.14.3, and each one is a command whose output I can compare before and after. The complete output is in `test_evidence.md`, which I keep out of my commits and used for the PR description.
 
 **1. My reproduction, re-run.** I ran `repro_194.py` from Steps to Reproduce against main at 413685b, then against the branch (HEAD b25d3e2). Because the editable install points at the branch, I ran the "before" against an export of main and printed which `webhook.py` each run imported.
 
@@ -305,6 +305,18 @@ To show the tests fail without the fix, I checked out untouched main into a scra
 
 The plan did not change: the diff against main is `ecotrace/exporters/webhook.py` and `tests/test_exporters.py` and nothing else, so `plan.md` and the Implementation Plan above are still the text plan-check accepted. Things I know about for the PR description: `>=` as the red edge (the maintainer's words do not cover "equal"); 15 new `E501` line-length hits in the lines I added, at flake8's default 79 columns, which the repo already breaks 513 times with no flake8 config and which CI does not run (I left the lines as they are to match the surrounding code); and I have not sent a card to a real Slack or Discord webhook. Still to do before a PR: rebase onto origin/main (8 commits ahead, none touching these files) and re-run the suite.
 
+**2026-10-29 (opening the PR)**
+
+That evening I forked `Zwony/ecotrace` and opened PR #229 about twelve minutes later, with the ship-gate guarding `gh pr create` (the stops and fixes are in the Pull Request Toolkit block). I did not do the rebase the last entry planned: the PR's four commits are the same SHAs as my local branch (`1b7bf97`, `35f5ae1`, `de8b833`, `b25d3e2`), still on `413685b`. The eight upstream commits I checked on 2026-10-29 touched neither of my two files, the suite's last run was the ship-gate's final pass on those same commits (`Tests` ok in 213 s), and Zwony merged the PR without asking for a rebase.
+
+**2026-10-30 (review and merge)**
+
+SonarCloud's bot had commented a minute after I opened the PR (Quality Gate passed, 0 new issues). The next day Codecov's bot reported that all modified and coverable lines are covered, then Zwony approved the PR at 16:33 UTC and merged it 15 seconds later, 13.7 hours after it opened; the merge closed #194. He asked for no changes, so I added no commits and nothing in the plan changed: the merged diff is the four commits, +145 -2, in `ecotrace/exporters/webhook.py` and `tests/test_exporters.py`.
+
+**2026-11-05 (after the merge)**
+
+The docs item I left out of the plan is still open: upstream `docs/USAGE.md` has no mention of the `format` option, and no commit has touched that file since the merge (the PR monitor's draft raised it, and I checked it with `gh api`). I did not open a docs follow-up, because the issue asked only for the exporter and its tests.
+
 **Toolkit**
 
 - Tool: Claude Code, working from `plan.md`: tests first, then the code, one commit per plan step. I also used WebFetch to read Slack's and Discord's docs while building, as the plan says.
@@ -346,25 +358,24 @@ The plan did not change: the diff against main is `ecotrace/exporters/webhook.py
 
 **Technical Skills Gained**
 
-[What you learned technically, named concretely.]
+I built payloads to an outside spec, Slack Block Kit and Discord embeds as plain dicts, and learned to read the platforms' docs for what they confirm and what they don't (Slack's section-block page doesn't say the top-level `text` is a notification fallback, and Discord's doesn't give the colour encoding), and to write that down instead of assuming. I worked test-first against a pinned default (a test that `format="json"` still sends the same six-key dict), and showed the new tests test the change by running them on untouched main from a `git archive` copy: 8 failed, 3 passed. I learned to read CI as the real spec: its Python 3.8 to 3.14 matrix meant `typing.Dict` and no `X | Y`, and `ci.yml` gave the install and test commands that CONTRIBUTING got wrong. I picked up several Windows details: `subprocess` cannot launch a `.CMD` shim (`shutil.which` can find it), the default encoding cannot read emoji (UTF-8 can), matplotlib's Tk backend is flaky headless (`MPLBACKEND=Agg`), and `core.autocrlf` leaves CRLF in the working tree and LF in git. And I learned to measure a repo's review rhythm from its own merged PRs with `gh` (`authorAssociation` and the PR timeline) instead of guessing how long to wait.
 
 **Challenges Overcome**
 
-[What was hard and how you solved it; point at the real events, the
-Toolkit blocks above are full of them.]
+Every issue my first scout scan accepted had been claimed within hours, so I picked from the Issue Selection site's Python list and read about two dozen full threads for claim comments and linked PRs until #194 held up. The same Windows bug stopped three of my tools: the voice guard, the ship-gate and the PR monitor each launched `claude` by its bare name and each needed `shutil.which` and a UTF-8 fix. The guard's emoji crash meant my PR description went out unchecked until I patched it, and then it caught a sentence that put my choice in the maintainer's mouth. A matplotlib test failed in 6 of 8 runs on untouched main and stopped the ship-gate until I ran the manifest's `Tests` row with the Agg backend (8 of 8 passed, nothing excluded). And my "before" reproduction kept importing the fix because the editable install pointed at my branch, which I solved by running main from a scratch export and printing which `webhook.py` each run imported.
 
 **What I'd Do Differently Next Time**
 
-[Reflection on your process.]
+I would check what a tool is pointing at before trusting its output: my first monitor run read a different PR from the one in this story, and I noticed only when I compared its PR line with this story's PR link. I would fix the Windows launch bug once, in a shared launcher, and not three times in three tools. I would post my reproduction report on the issue before leaning on plan-check's grade, which I noted at the time and did not do. And I would do the rebase I planned before opening the PR, or write down that I was skipping it and why; it did not matter here, but I only recorded it afterwards.
 
 ---
 
 ## Resources Used
 
-[What actually helped, not a reading list. List things this story
-already shows you using: the doc you followed to set the environment
-up, the thread that explained the bug, the person who answered you.
-One real entry beats ten plausible ones.]
-
-- [Link to documentation that helped]
-- [Discussion, issue, or post that helped]
+- https://github.com/Zwony/ecotrace/issues/194: the issue and its thread. Zwony's reply (https://github.com/Zwony/ecotrace/issues/194#issuecomment-6352132885) settled the colour rule (green below `carbon_limit` or when it is unset, red/orange above), called my plan spot on, and assigned me the issue.
+- https://github.com/Zwony/ecotrace/blob/main/.github/workflows/ci.yml: the install and test commands CI really runs, and the Python 3.8 to 3.14 range my code had to fit; CONTRIBUTING's dev-extra install line names an extra that does not exist.
+- https://github.com/Zwony/ecotrace/blob/main/CONTRIBUTING.md: the branch and commit conventions and the PR steps. It says nothing about AI, which is why my PR description states my AI use in my own words.
+- https://github.com/Zwony/ecotrace/blob/main/tests/test_exporters.py: `test_webhook_exporter_registration_and_export`, the pattern I copied for all nine new tests (patch `requests.post`, drive a real `EcoTrace`, shut the pool down before asserting).
+- https://docs.slack.dev/reference/block-kit/blocks/section-block/: what a section block needs (`text` or `fields`, up to 10 fields); it does not say what the top-level `text` is for.
+- https://discord.com/developers/docs/resources/webhook#execute-webhook and https://discord.com/developers/docs/resources/message#embed-object: `embeds` as a webhook content field, and the embed's title and field limits (the colour encoding is not given).
+- The Issue Selection site's Python list: where #194 came from after every issue my scan accepted had been claimed.
