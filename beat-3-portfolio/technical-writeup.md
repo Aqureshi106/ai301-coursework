@@ -2,7 +2,7 @@
 
 ## Overview
 
-I added a format option to ecotrace's webhook exporter, so emissions alerts can go out as Slack or Discord rich cards. Claude Code carried out the diagnosis, the patch, and gh pr edit with both my approval and review. Plain JSON remains the default in order for nothing to break for existing users. The maintainer approved my pull request and merged it upon review and asked for no alterations.
+I added a format option to ecotrace's webhook exporter, so emissions alerts can go out as Slack or Discord rich cards, tested without sending to a real Slack or Discord. Plain JSON remains the default in order for nothing to break for existing users. When my voice guard, a hook that checks pull request descriptions, crashed on Windows, Claude Code carried out the diagnosis and patch for the guard and ran gh pr edit on the description with both my approval and review. The maintainer approved my pull request and merged it upon review and asked for no alterations.
 https://github.com/Zwony/ecotrace/pull/229
 
 ## What happened
@@ -90,7 +90,7 @@ Claude Code had reworded the sentence and ran gh pr edit after my approval to ex
 
 The pull request opened on the evening of 10-29. The maintainer approved it on 10-30, 13.7 hours after it opened, and merged it 15 seconds later.
 
-The guard stopped the overclaiming sentence at 23:31 on 10-29, 37 minutes after the pull request opened. The pull request opened around 22:54. I corrected the sentence, and the guard passed it at 00:08. That was 12.4 hours before the maintainer approved. The maintainer's review doesn't mention the guard.
+The guard stopped the overclaiming sentence at 23:31 on 10-29, 37 minutes after the pull request opened. The pull request opened around 22:54. With my approval, Claude Code corrected the sentence, and the guard passed it at 00:08. That was 12.4 hours before the maintainer approved. The maintainer's review doesn't mention the guard.
 
 *2026-10-30 12:33 EDT*
 
