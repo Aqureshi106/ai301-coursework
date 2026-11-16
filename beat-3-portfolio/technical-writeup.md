@@ -2,12 +2,12 @@
 
 ## Overview
 
-I added a format option to ecotrace's webhook exporter, so emissions alerts can go out as Slack or Discord rich cards, tested without sending to a real Slack or Discord. Plain JSON remains the default in order for nothing to break for existing users. When my voice guard, a hook that checks pull request descriptions, crashed on Windows, Claude Code carried out the diagnosis and patch for the guard and ran gh pr edit on the description with both my approval and review. The maintainer approved my pull request and merged it upon review and asked for no alterations.
+I added a format option to ecotrace's webhook exporter, so emissions alerts can go out as Slack or Discord rich cards, tested without sending to a real Slack or Discord. Plain JSON remains the default in order for nothing to break for existing users. When my voice guard, a hook that checks pull request descriptions against the rules in my voice guide, which I wrote, crashed on Windows, Claude Code carried out the diagnosis and patch for the guard and ran gh pr edit on the description with both my approval and review. The maintainer approved my pull request and merged it upon review and asked for no alterations.
 https://github.com/Zwony/ecotrace/pull/229
 
 ## What happened
 
-The voice guard is a hook that checks pull request drafts before gh pr create runs. The crash happened at 22:55 on 10-29, when I ran the guard by hand on the real pull request command and real description. The voice guard threw a UnicodeDecodeError as Windows read the draft with the wrong encoding. A crash exits with code 1, which Claude Code lets through, so a broken guard would have let the post go out unchecked. 
+The voice guard is a hook meant to check pull request drafts before gh pr create runs. Pull request #229 opened at 22:54 on 10-29, and the guard's log has no line for that command, so its first run on the real description was the manual one at 22:55, when I ran the guard by hand on the real pull request command and real description, and it crashed. The voice guard threw a UnicodeDecodeError as Windows read the draft with the wrong encoding. A crash exits with code 1, which Claude Code lets through, so a broken guard would have let the post go out unchecked. 
 
 *2026-10-29 22:55 EDT*
 
@@ -66,6 +66,23 @@ The patch wraps the check in try/except in order for a crash to stop the post an
          print(f"voice-guard: cannot read {draft_path}: {e}",
 ```
 
+The diff above makes a crash stop the post (the try/except hunk) and reads the manual-check draft as UTF-8 (the `manual_main` hunk). The traceback points into `extract_body`, the hook's own read path, so the hunks below are the ones that fix that frame: both `read_text` calls in `extract_body` now read UTF-8.
+
+```diff
+@@ -133,2 +133,3 @@
+-                    return (Path(cwd or ".") / path).read_text(), None
+-                except OSError as e:
++                    return (Path(cwd or ".") / path).read_text(
++                        encoding="utf-8"), None
++                except (OSError, ValueError) as e:
+@@ -140,2 +141,3 @@
+-                return (Path(cwd or ".") / path).read_text(), None
+-            except OSError as e:
++                return (Path(cwd or ".") / path).read_text(
++                    encoding="utf-8"), None
++            except (OSError, ValueError) as e:
+```
+
 The guard flagged the line that starts "its colour is green when..." under the rule "separate what I saw from what I think." The sentence presented the colour rule as confirmed by the maintainer. He had only written green below carbon_limit and red/orange above it. The equal case and choosing red over orange were my choices. The patched guard stopped the real description at 23:31.
 
 *2026-10-29 23:31 EDT*
@@ -88,9 +105,9 @@ Claude Code had reworded the sentence and ran gh pr edit after my approval to ex
 - Same file: `format="discord"` sends one embed with the function name as the title and gCO2 and duration as fields. The colour is green when the measurement is below the EcoTrace instance's `carbon_limit` or no limit is set, and red at or above it; the tests cover no limit, below, equal and above. On [the issue thread](https://github.com/Zwony/ecotrace/issues/194#issuecomment-6352132885) the maintainer wrote green below `carbon_limit` (or unset) and red/orange when emissions exceed it. The equal case, and red over orange, are my choices. The colour compares one measurement with `carbon_limit`. It is not a "budget used up" signal; `core.py` tracks that separately, with the running total (I read that in `_enforce_carbon_budget`).
 ```
 
-The pull request opened on the evening of 10-29. The maintainer approved it on 10-30, 13.7 hours after it opened, and merged it 15 seconds later.
+The maintainer approved it on 10-30, 13.7 hours after it opened, and merged it 15 seconds later.
 
-The guard stopped the overclaiming sentence at 23:31 on 10-29, 37 minutes after the pull request opened. The pull request opened around 22:54. With my approval, Claude Code corrected the sentence, and the guard passed it at 00:08. That was 12.4 hours before the maintainer approved. The maintainer's review doesn't mention the guard.
+The guard stopped the overclaiming sentence at 23:31 on 10-29, 37 minutes after the pull request opened. With my approval, Claude Code corrected the sentence, and the guard passed it at 00:08. That was 12.4 hours before the maintainer approved. The maintainer's review doesn't mention the guard.
 
 *2026-10-30 12:33 EDT*
 
